@@ -28,6 +28,7 @@ export const registrationSchema = z.object({
 
 export default function Home() {
   const [takenSeats, setTakenSeats] = useState<number[]>([]);
+  const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false);
 
   const {
@@ -83,6 +84,7 @@ export default function Home() {
         const data = await res.json();
         if (data.status === "success") {
           setTakenSeats(data.takenSeats);
+          setCount(data.count)
           // Reset seat if currently selected seat is taken
           // if (data.takenSeats.includes(selectedSeat)) setValue("seat", 0);
         } else {
@@ -131,16 +133,16 @@ export default function Home() {
             <div className="flex gap-2 items-center">
               <MessageCircleHeart width={30} />
               <div>
-                <p>Нийт 40 суудал</p>
+                <p>Нийт 60 суудал</p>
                 <p className="text-gray-600 text-[12px]">
-                  Нэг өдөрлөг 20 суудал
+                  Нийт {59 - count} суудал үлдлээ
                 </p>
               </div>
             </div>
             <div className="flex gap-2 items-center">
               <Calendar width={30} />
               <div>
-                <p>2 сарын 1 - 12:00/14:00 </p>
+                <p> 1/31 - 12:00, 1/2 - 12:00/14:00 </p>
                 <p className="text-gray-600 text-[12px]">Бүтэнсайн өдөр</p>
               </div>
             </div>

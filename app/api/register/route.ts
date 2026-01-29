@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
       .map((row) => Number(row[1])) // Seat column
       .filter((seat) => !isNaN(seat));
 
-    return NextResponse.json({ status: "success", takenSeats });
+    return NextResponse.json({ status: "success", takenSeats, count: rows.length });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json(
