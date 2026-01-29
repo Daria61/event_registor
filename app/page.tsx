@@ -21,6 +21,7 @@ export const registrationSchema = z.object({
 
 export default function Home() {
     const [takenSeats, setTakenSeats] = useState<number[]>([]);
+    const [loading, setLoading] = useState(false); 
 
   const {
     register,
@@ -43,6 +44,7 @@ export default function Home() {
 
   const onSubmit = async (data: z.infer<typeof registrationSchema>) => {
     try {
+          setLoading(true);
       const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,6 +60,8 @@ export default function Home() {
       }
     } catch (err) {
       toast.error("Алдаа гарлаа");
+    }finally {
+      setLoading(false); // <-- stop loading
     }
   };
 
@@ -85,9 +89,9 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
-      <div className="relative w-87.5 min-h-screen bg-black overflow-hidden">
+      <div className="relative w-120 min-h-screen bg-black overflow-hidden">
         {/* Fixed background image – centered */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-75 w-87.5 z-0">
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-90 w-120 z-0">
           <Image
             src="/Stoic.png"
             alt="poster"
@@ -98,7 +102,7 @@ export default function Home() {
         </div>
 
         {/* Scrollable content */}
-        <div className="relative z-10 mt-65 rounded-t-4xl bg-white min-h-screen overflow-y-auto px-4 py-6">
+        <div className="relative z-10 mt-70 rounded-t-4xl bg-white min-h-screen overflow-y-auto px-4 py-6">
           <p className="font-semibold mb-3 text-xl">
             Нээлттэй өдөрлөг мэдээлэл
           </p>
@@ -208,8 +212,8 @@ export default function Home() {
               <Input placeholder="Утас" {...register("phone")} className="border p-2 rounded" />
               {errors.phone && <p className="text-red-500 text-sm">{errors.phone.message}</p>}
 
-              <Button type="submit" className="bg-blue-500 text-white py-2 rounded mt-4">
-                Бүртгүүлэх
+              <Button type="submit" className="bg-blue-500 text-white py-2 rounded mt-4" disabled={loading}>
+               {loading? "Илгээж байна...":  "Бүртгүүлэх"}
               </Button>
             </form>
           </div>

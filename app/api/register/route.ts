@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
+import { sendEmail } from "@/lib/mailer";
 
 // Load service account credentials from env
 const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY as string);
@@ -35,6 +36,13 @@ export async function POST(req: NextRequest) {
       requestBody: {
         values: [[time, seat, email, phone, new Date().toISOString()]],
       },
+    });
+
+      await sendEmail({
+      to: email,
+      subject: "Бүртгэл амжилттай боллоо",
+      text: `Та амжилттай бүртгэгдлээ! Цаг: ${time}, Суудал: ${seat}`,
+      html: `<p>Та амжилттай бүртгэгдлээ!</p><p><strong>Цаг:</strong> ${time}</p><p><strong>Суудал:</strong> ${seat}</p>`,
     });
 
     return NextResponse.json({ status: "success" });
