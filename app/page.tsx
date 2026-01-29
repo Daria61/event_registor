@@ -144,7 +144,7 @@ export default function Home() {
               <Calendar width={30} />
               <div>
                 <p> 1/31 - 12:00, 1/2 - 12:00/14:00 </p>
-                <p className="text-gray-600 text-[12px]">Бүтэнсайн өдөр</p>
+                <p className="text-gray-600 text-[12px]">Амралтын өдөр</p>
               </div>
             </div>
             <div className="flex gap-2 items-center">
