@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge"
 
 const TIME = ["12:00", "14:00"];
 const DATE = ["1 сарын 31", "2 сарын 1"] as const;
@@ -135,7 +136,7 @@ export default function Home() {
               <div>
                 <p>Нийт 60 суудал</p>
                 <p className="text-gray-600 text-[12px]">
-                  Нийт {59 - count} суудал үлдлээ
+                  Нийт {61 - count} суудал үлдлээ
                 </p>
               </div>
             </div>
@@ -197,10 +198,10 @@ export default function Home() {
                     key={date}
                     type="button"
                     variant="outline"
-                    className={`px-4 py-2 border ${selectedDate === date ? "bg-blue-500 text-white" : ""}`}
+                    className={`relative px-4 py-2 border ${selectedDate === date ? "bg-blue-500 text-white" : ""}`}
                     onClick={() => setValue("date", date)}
                   >
-                    {date}
+                    {date} {date === "1 сарын 31" && <Badge className="absolute -top-3 -right-4">New</Badge> }
                   </Button>
                 ))}
               </div>
