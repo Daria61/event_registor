@@ -7,12 +7,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EventInfo } from "@/components/EventInfo";
 
 export type ScheduleMap = Record<string, string[]>;
 
-export const registrationSchema = z.object({
+const registrationSchema = z.object({
   date: z.string().min(1),
   time: z.string().min(1),
   seat: z.number().min(1, "Суудал сонгоно уу"),
@@ -25,9 +25,11 @@ export default function Home() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [selectOptions, setSelectOptions] = useState<ScheduleMap>({});
-  const [totalSeats, setTotalSeats] = useState(0)
-  const [fetchLoading, setFetchLoading] = useState(false)
-  const [filterLoading, setFilterLoading] = useState(false)
+  const [totalSeats, setTotalSeats] = useState(0);
+  const [fetchLoading, setFetchLoading] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
+
+  const requestIdRef = useRef(0);
 
   const {
     register,
@@ -38,18 +40,106 @@ export default function Home() {
   } = useForm({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-      time: "12:00",
+      date: "",
+      time: "",
       seat: 0,
       email: "",
       phone: "",
-      date: "0",
     },
   });
 
-  const selectedTime = watch("time"); // track selected time
-  const selectedSeat = watch("seat"); // track selected seat
-  const selectedDate = watch("date"); // track selected date
+  const selectedDate = watch("date");
+  const selectedTime = watch("time");
+  const selectedSeat = watch("seat");
 
+  // ---------------- Fetch seat status ----------------
+  useEffect(() => {
+    if (!selectedDate || !selectedTime) return;
+
+    const fetchSeats = async () => {
+      const requestId = ++requestIdRef.current;
+
+      setFilterLoading(true);
+      setTakenSeats([]);
+      setValue("seat", 0);
+
+      try {
+        const res = await fetch(
+          `/api/register?date=${selectedDate}&time=${selectedTime}`,
+        );
+        const data = await res.json();
+
+        if (requestId !== requestIdRef.current) return;
+
+        if (data.status === "success") {
+          setTakenSeats(data.takenSeats);
+          setCount(data.count);
+
+          // If selected seat becomes invalid
+          if (data.takenSeats.includes(selectedSeat)) {
+            setValue("seat", 0);
+          }
+        } else {
+          toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+        }
+      } catch {
+        toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setFilterLoading(false);
+        }
+      }
+    };
+
+    fetchSeats();
+  }, [selectedDate, selectedTime]);
+
+  // ---------------- Fetch schedule ----------------
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        setFetchLoading(true);
+        const res = await fetch("/api/schedule");
+        const data = await res.json();
+
+        if (data.status === "success") {
+          setSelectOptions(data.schedule);
+          setTotalSeats(data.total);
+        } else {
+          toast.error("Хуваарь авахад алдаа гарлаа");
+        }
+      } catch {
+        toast.error("Хуваарь авахад алдаа гарлаа");
+      } finally {
+        setFetchLoading(false);
+      }
+    };
+
+    fetchOptions();
+  }, []);
+
+  // ---------------- Init date & time ----------------
+  useEffect(() => {
+    if (!Object.keys(selectOptions).length) return;
+
+    const firstDate = Object.keys(selectOptions)[0];
+    const firstTime = selectOptions[firstDate][0];
+
+    setValue("date", firstDate);
+    setValue("time", firstTime);
+  }, [selectOptions]);
+
+  // ---------------- Sync time with date ----------------
+  useEffect(() => {
+    const times = selectOptions[selectedDate];
+    if (!times) return;
+
+    if (!times.includes(selectedTime)) {
+      setValue("time", times[0]);
+    }
+  }, [selectedDate, selectOptions]);
+
+  // ---------------- Submit ----------------
   const onSubmit = async (data: z.infer<typeof registrationSchema>) => {
     try {
       setLoading(true);
@@ -61,217 +151,109 @@ export default function Home() {
 
       const result = await res.json();
 
-      if (result.status === "success") {
-        toast.success("Амжилттай бүртгэгдлээ 🎉");
-      } else {
-        toast.error("Алдаа гарлаа: " + result.message);
-      }
-    } catch (err) {
+      result.status === "success"
+        ? toast.success("Амжилттай бүртгэгдлээ 🎉")
+        : toast.error(result.message);
+    } catch {
       toast.error("Алдаа гарлаа");
     } finally {
-      setLoading(false); // <-- stop loading
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!selectedTime) return;
-
-    const fetchTakenSeats = async () => {
-      try {
-setFilterLoading(true)
-
-        const res = await fetch(
-          `/api/register?date=${selectedDate}&time=${selectedTime}`,
-        );
-        const data = await res.json();
-        if (data.status === "success") {
-          setTakenSeats(data.takenSeats);
-          setCount(data.count);
-          // Reset seat if currently selected seat is taken
-          // if (data.takenSeats.includes(selectedSeat)) setValue("seat", 0);
-        } else {
-          toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
-        }
-      } catch (err) {
-        toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
-      } finally{
-        setFilterLoading(false)
-      }
-    };
-
-    fetchTakenSeats();
-  }, [selectedTime, selectedDate]);
-
-  useEffect(() => {
-    setValue("seat", 0);
-  }, [selectedDate, selectedTime]);
-
-  useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        setFetchLoading(true);
-        const res = await fetch(`/api/schedule`);
-        const data = await res.json();
-        if (data.status === "success") {
-          setSelectOptions(data.schedule);
-          setTotalSeats(data.total)
-        } else {
-          toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
-        }
-      } catch (err) {
-        toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
-      } finally {
-        setFetchLoading(false);
-      }
-    };
-    fetchOptions();
-  }, []);
-
-  useEffect(() => {
-    if (!selectOptions || Object.keys(selectOptions).length === 0) return;
-
-    const firstDate = Object.keys(selectOptions)[0];
-    const firstTime = selectOptions[firstDate][0];
-
-    setValue("date", firstDate);
-    setValue("time", firstTime);
-  }, [selectOptions]);
-
-
-  useEffect(() => {
-  const times = selectOptions[selectedDate];
-  if (!times) return;
-
-  if (!times.includes(selectedTime)) {
-    setValue("time", times[0]);
+  if (fetchLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
   }
-}, [selectedDate, selectOptions]);
-
-  if(fetchLoading) return <div className="flex min-h-screen items-center justify-center bg-white">Loading...</div>
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="relative w-120 min-h-screen bg-black overflow-hidden">
-        {/* Fixed background image – centered */}
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-90 w-120 z-0">
-          <Image
-            src="/Stoic.png"
-            alt="poster"
-            fill
-            className="object-cover"
-            priority
-          />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-90 w-120">
+          <Image src="/Stoic.png" alt="poster" fill className="object-cover" />
         </div>
 
-        {/* Scrollable content */}
-        <div className="relative z-10 mt-70 rounded-t-4xl bg-white min-h-screen overflow-y-auto px-4 py-6">
-          <p className="font-semibold mb-3 text-xl">
-            Нээлттэй өдөрлөг мэдээлэл
-          </p>
-         <EventInfo totalSeats={totalSeats} count={count} schedule={selectOptions}/>
+        <div className="relative z-10 mt-70 bg-white rounded-t-4xl px-4 py-6">
+          <EventInfo
+            totalSeats={totalSeats}
+            count={count}
+            schedule={selectOptions}
+          />
 
-          <div className="mt-10">
-            <p className="font-semibold my-3 text-xl">Бүртгүүлэх</p>
-            <form
-              onSubmit={handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
-              <p>Өдөр сонгох</p>
-              <div className="flex gap-4 flex-wrap">
-                {Object.keys(selectOptions).map((date) => (
-                  <Button
-                    key={date}
-                    type="button"
-                    variant="outline"
-                    className={`px-4 py-2 ${
-                      selectedDate === date ? "bg-blue-500 text-white" : ""
-                    }`}
-                    onClick={() => setValue("date", date)}
-                  >
-                    {date}
-                  </Button>
-                ))}
-              </div>
-              {/* Time selection */}
-              <p>Цаг сонгох</p>
-              <div className="flex gap-4">
-                {(selectOptions[selectedDate] || []).map((time) => (
-                  <Button
-                    key={time}
-                    type="button"
-                    variant="outline"
-                    className={`px-4 py-2 ${
-                      selectedTime === time ? "bg-blue-500 text-white" : ""
-                    }`}
-                    onClick={() => setValue("time", time)}
-                  >
-                    {time}
-                  </Button>
-                ))}
-              </div>
-              {errors.time && (
-                <p className="text-red-500 text-sm">{errors.time.message}</p>
-              )}
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-4">
+            {/* Date */}
+            <p>Өдөр сонгох</p>
+            <div className="flex gap-2 flex-wrap">
+              {Object.keys(selectOptions).map((date) => (
+                <Button
+                  key={date}
+                  type="button"
+                  variant="outline"
+                  className={selectedDate === date ? "bg-blue-500 text-white" : ""}
+                  onClick={() => setValue("date", date)}
+                >
+                  {date}
+                </Button>
+              ))}
+            </div>
 
-              {/* Seat selection */}
-              <p>Суудал сонгох</p>
-              <div className="grid grid-cols-6 gap-2">
-                {filterLoading &&  
-             <div className="w-full h-42 flex justify-center">   <div className="w-12 h-12 border-8 border-t-blue-500 border-gray-200 rounded-full animate-spin self-center"></div> </div> 
-                }
-                { !filterLoading && Array.from({ length: 20 }).map((_, ind) => {
-                  const seatNum = ind + 1;
-                  const isTaken = takenSeats.includes(seatNum);
+            {/* Time */}
+            <p>Цаг сонгох</p>
+            <div className="flex gap-2">
+              {(selectOptions[selectedDate] || []).map((time) => (
+                <Button
+                  key={time}
+                  type="button"
+                  variant="outline"
+                  className={selectedTime === time ? "bg-blue-500 text-white" : ""}
+                  onClick={() => setValue("time", time)}
+                >
+                  {time}
+                </Button>
+              ))}
+            </div>
+
+            {/* Seats */}
+            <p>Суудал сонгох</p>
+            <div className="grid grid-cols-6 gap-2">
+              {filterLoading ? (
+                <div className="col-span-6 flex justify-center py-6 h-42">
+                  <div className="w-10 h-10 border-4 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              ) : (
+                Array.from({ length: 20 }).map((_, i) => {
+                  const seat = i + 1;
+                  const taken = takenSeats.includes(seat);
 
                   return (
                     <Button
-                      key={seatNum}
+                      key={seat}
                       type="button"
+                      disabled={taken}
                       variant="outline"
-                      disabled={isTaken}
-                      className={`px-2 py-2 border ${
-                        selectedSeat === seatNum ? "bg-blue-500 text-white" : ""
-                      } ${isTaken ? "bg-gray-300 cursor-not-allowed" : ""}`}
-                      onClick={() => !isTaken && setValue("seat", seatNum)}
+                      className={`${taken && "bg-gray-300"} ${
+                        selectedSeat === seat && "bg-blue-500 text-white"
+                      }`}
+                      onClick={() => setValue("seat", seat)}
                     >
-                      {seatNum}
+                      {seat}
                     </Button>
                   );
-                })}
-              </div>
-              {errors.seat && (
-                <p className="text-red-500 text-sm">{errors.seat.message}</p>
+                })
               )}
+            </div>
 
-              {/* Personal info */}
-              <p>Хувийн мэдээлэл</p>
-              <Input
-                placeholder="Имэйл"
-                {...register("email")}
-                className="border p-2 rounded"
-              />
-              {errors.email && (
-                <p className="text-red-500 text-sm">{errors.email.message}</p>
-              )}
+            {/* Info */}
+            <Input placeholder="Имэйл" {...register("email")} />
+            <Input placeholder="Утас" {...register("phone")} />
 
-              <Input
-                placeholder="Утас"
-                {...register("phone")}
-                className="border p-2 rounded"
-              />
-              {errors.phone && (
-                <p className="text-red-500 text-sm">{errors.phone.message}</p>
-              )}
-
-              <Button
-                type="submit"
-                className="bg-blue-500 text-white py-2 rounded mt-4"
-                disabled={loading}
-              >
-                {loading ? "Илгээж байна..." : "Бүртгүүлэх"}
-              </Button>
-            </form>
-          </div>
+            <Button disabled={loading} className="w-full bg-blue-500 text-white">
+              {loading ? "Илгээж байна..." : "Бүртгүүлэх"}
+            </Button>
+          </form>
         </div>
       </div>
     </div>
