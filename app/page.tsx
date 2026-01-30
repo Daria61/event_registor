@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { MessageCircleHeart, Calendar, MapPin, Link } from "lucide-react";
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,19 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge"
+import { EventInfo } from "@/components/EventInfo";
 
-const TIME = ["12:00", "14:00"];
-const DATE = ["1 сарын 31", "2 сарын 1"] as const;
-
-const TIME_BY_DATE: Record<(typeof DATE)[number], readonly string[]> = {
-  "1 сарын 31": ["12:00"],
-  "2 сарын 1": ["12:00", "14:00"],
-} as const;
+export type ScheduleMap = Record<string, string[]>;
 
 export const registrationSchema = z.object({
-  time: z.enum(TIME),
-  date: z.enum(DATE),
+  date: z.string().min(1),
+  time: z.string().min(1),
   seat: z.number().min(1, "Суудал сонгоно уу"),
   email: z.string().email("Имэйл буруу байна"),
   phone: z.string().min(5, "Утасны дугаарыг оруулна уу"),
@@ -29,8 +22,12 @@ export const registrationSchema = z.object({
 
 export default function Home() {
   const [takenSeats, setTakenSeats] = useState<number[]>([]);
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [selectOptions, setSelectOptions] = useState<ScheduleMap>({});
+  const [totalSeats, setTotalSeats] = useState(0)
+  const [fetchLoading, setFetchLoading] = useState(false)
+  const [filterLoading, setFilterLoading] = useState(false)
 
   const {
     register,
@@ -45,7 +42,7 @@ export default function Home() {
       seat: 0,
       email: "",
       phone: "",
-      date: DATE[0],
+      date: "0",
     },
   });
 
@@ -81,11 +78,15 @@ export default function Home() {
 
     const fetchTakenSeats = async () => {
       try {
-        const res = await fetch(`/api/register?date=${selectedDate}&time=${selectedTime}`);
+setFilterLoading(true)
+
+        const res = await fetch(
+          `/api/register?date=${selectedDate}&time=${selectedTime}`,
+        );
         const data = await res.json();
         if (data.status === "success") {
           setTakenSeats(data.takenSeats);
-          setCount(data.count)
+          setCount(data.count);
           // Reset seat if currently selected seat is taken
           // if (data.takenSeats.includes(selectedSeat)) setValue("seat", 0);
         } else {
@@ -93,6 +94,8 @@ export default function Home() {
         }
       } catch (err) {
         toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+      } finally{
+        setFilterLoading(false)
       }
     };
 
@@ -100,16 +103,51 @@ export default function Home() {
   }, [selectedTime, selectedDate]);
 
   useEffect(() => {
-    const availableTimes = TIME_BY_DATE[selectedDate];
-
-    if (!availableTimes.includes(selectedTime)) {
-      setValue("time", availableTimes[0]);
-    }
-  }, [selectedDate]);
+    setValue("seat", 0);
+  }, [selectedDate, selectedTime]);
 
   useEffect(() => {
-  setValue("seat", 0);
-}, [selectedDate, selectedTime]);
+    const fetchOptions = async () => {
+      try {
+        setFetchLoading(true);
+        const res = await fetch(`/api/schedule`);
+        const data = await res.json();
+        if (data.status === "success") {
+          setSelectOptions(data.schedule);
+          setTotalSeats(data.total)
+        } else {
+          toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+        }
+      } catch (err) {
+        toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+      } finally {
+        setFetchLoading(false);
+      }
+    };
+    fetchOptions();
+  }, []);
+
+  useEffect(() => {
+    if (!selectOptions || Object.keys(selectOptions).length === 0) return;
+
+    const firstDate = Object.keys(selectOptions)[0];
+    const firstTime = selectOptions[firstDate][0];
+
+    setValue("date", firstDate);
+    setValue("time", firstTime);
+  }, [selectOptions]);
+
+
+  useEffect(() => {
+  const times = selectOptions[selectedDate];
+  if (!times) return;
+
+  if (!times.includes(selectedTime)) {
+    setValue("time", times[0]);
+  }
+}, [selectedDate, selectOptions]);
+
+  if(fetchLoading) return <div className="flex min-h-screen items-center justify-center bg-white">Loading...</div>
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
@@ -130,60 +168,7 @@ export default function Home() {
           <p className="font-semibold mb-3 text-xl">
             Нээлттэй өдөрлөг мэдээлэл
           </p>
-          <div className="flex flex-col gap-3">
-            <div className="flex gap-2 items-center">
-              <MessageCircleHeart width={30} />
-              <div>
-                <p>Нийт 60 суудал</p>
-                <p className="text-gray-600 text-[12px]">
-                  Нийт {61 - count} суудал үлдлээ
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 items-center">
-              <Calendar width={30} />
-              <div>
-                <p> 1/31 - 12:00, 1/2 - 12:00/14:00 </p>
-                <p className="text-gray-600 text-[12px]">Амралтын өдөр</p>
-              </div>
-            </div>
-            <div className="flex gap-2 items-center">
-              <MapPin width={30} />
-              <div>
-                <p>Stoic Office</p>
-                <a
-                  href="https://www.google.com/maps/place/Stoic+Education+Consulting+Firm/@47.9172052,106.9069526,743m/data=!3m2!1e3!4b1!4m6!3m5!1s0x5d96935a9986ab71:0xadd672bf4954577!8m2!3d47.9172016!4d106.9095275!16s%2Fg%2F11xp4903pk!5m1!1e1?entry=ttu&g_ep=EgoyMDI2MDEyNy4wIKXMDSoASAFQAw%3D%3D"
-                  target="_blank"
-                  className="text-gray-600 text-[12px] flex gap-2 items-center"
-                >
-                  Мөнгөн завьяа <Link width={12} />
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10">
-            <p className="font-semibold mb-3 text-xl">Тайлбар</p>
-            Энэхүү нээлттэй өдөрлөг нь манай их сургуулийн өргөдөл бэлдэх
-            хөтөлбөрийн талаар мэдээлэл авах хүсэлтэй эцэг эх, асран хамгаалагч
-            болон хөтөлбөрт хамрагдах хүсэлтэй сурагчдад зориулсан юм. Өдөрлөгт
-            оролцсоноор гадаадын их сургуулиудын өргөдлийн системийн талаар
-            суурь мэдлэгтэй болох ба өдөрлөгийн дараа мэргэжлийн багш нараас
-            ганцаарчилсан зөвлөгөө үнэ төлбөргүй авах боломжтой.
-            <br />
-            <br />
-            Өдөрлөгт дараах хичээлүүд багтана:
-            <br />
-            - СТОИК сургалтын төвийн үйл ажиллагаа
-            <br />
-            - АНУ, Европ, Азийн их сургуулиудын өргөдлийн систем
-            <br />
-            - IELTS, TOEFL, SAT шалгалтууд
-            <br />
-            - Хичээлээс гадуурх үйл ажиллагаа
-            <br />
-            - Өргөдлөө хэрхэн бэлдэх
-            <br />- Тэтгэлэг болон санхүүгийн тусламж
-          </div>
+         <EventInfo totalSeats={totalSeats} count={count} schedule={selectOptions}/>
 
           <div className="mt-10">
             <p className="font-semibold my-3 text-xl">Бүртгүүлэх</p>
@@ -192,28 +177,30 @@ export default function Home() {
               className="flex flex-col gap-4"
             >
               <p>Өдөр сонгох</p>
-              <div className="flex gap-4">
-                {DATE.map((date) => (
+              <div className="flex gap-4 flex-wrap">
+                {Object.keys(selectOptions).map((date) => (
                   <Button
                     key={date}
                     type="button"
                     variant="outline"
-                    className={`relative px-4 py-2 border ${selectedDate === date ? "bg-blue-500 text-white" : ""}`}
+                    className={`px-4 py-2 ${
+                      selectedDate === date ? "bg-blue-500 text-white" : ""
+                    }`}
                     onClick={() => setValue("date", date)}
                   >
-                    {date} {date === "1 сарын 31" && <Badge className="absolute -top-3 -right-4">New</Badge> }
+                    {date}
                   </Button>
                 ))}
               </div>
               {/* Time selection */}
               <p>Цаг сонгох</p>
               <div className="flex gap-4">
-                {TIME_BY_DATE[selectedDate].map((time) => (
+                {(selectOptions[selectedDate] || []).map((time) => (
                   <Button
                     key={time}
                     type="button"
                     variant="outline"
-                    className={`px-4 py-2 border ${
+                    className={`px-4 py-2 ${
                       selectedTime === time ? "bg-blue-500 text-white" : ""
                     }`}
                     onClick={() => setValue("time", time)}
@@ -229,7 +216,10 @@ export default function Home() {
               {/* Seat selection */}
               <p>Суудал сонгох</p>
               <div className="grid grid-cols-6 gap-2">
-                {Array.from({ length: 20 }).map((_, ind) => {
+                {filterLoading &&  
+             <div className="w-full h-42 flex justify-center">   <div className="w-12 h-12 border-8 border-t-blue-500 border-gray-200 rounded-full animate-spin self-center"></div> </div> 
+                }
+                { !filterLoading && Array.from({ length: 20 }).map((_, ind) => {
                   const seatNum = ind + 1;
                   const isTaken = takenSeats.includes(seatNum);
 
