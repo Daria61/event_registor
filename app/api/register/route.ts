@@ -30,6 +30,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if seat is already taken for this date and time
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:F`,
+    });
+
+    const rows = response.data.values || [];
+
+    // Filter rows for the same date and time
+    const existingRegistrations = rows.filter((row) => {
+      const rowTime = row[0]; // Column A
+      const rowDate = row[5]; // Column F
+      return rowDate === date && rowTime === time;
+    });
+
+    // Check if the requested seat is already taken
+    const takenSeats = existingRegistrations
+      .map((row) => Number(row[1])) // Seat column
+      .filter((s) => !isNaN(s));
+
+    if (takenSeats.includes(Number(seat))) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message:
+            "Энэ суудал аль хэдийн эзэлсэн байна. Өөр суудал сонгоно уу.",
+        },
+        { status: 409 }, // 409 Conflict
+      );
+    }
+
     // Append row to Google Sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
@@ -72,6 +103,21 @@ export async function POST(req: NextRequest) {
 `,
     });
 
+    await sendEmail({
+      to: "ts.sarnai05@gmail.com",
+      subject: "Event-д хүн бүртгүүллээ",
+      html: `
+<p>
+  <strong>Нээлттэй хичээлийн хуваарь:</strong>
+  ${date} ${time}
+</p>
+
+<p>
+    ${email}  and  ${phone}
+</p>
+`,
+    });
+
     return NextResponse.json({ status: "success" });
   } catch (error: any) {
     console.error(error);
@@ -98,7 +144,7 @@ export async function GET(req: NextRequest) {
     const rows = response.data.values || [];
 
     // Filter by time if provided
-        const filteredRows = rows.filter((row) => {
+    const filteredRows = rows.filter((row) => {
       const rowTime = row[0]; // Column A
       const rowDate = row[5]; // Column F
 
@@ -121,7 +167,11 @@ export async function GET(req: NextRequest) {
       .map((row) => Number(row[1])) // Seat column
       .filter((seat) => !isNaN(seat));
 
-    return NextResponse.json({ status: "success", takenSeats, count: rows.length });
+    return NextResponse.json({
+      status: "success",
+      takenSeats,
+      count: rows.length,
+    });
   } catch (error: any) {
     console.error(error);
     return NextResponse.json(
