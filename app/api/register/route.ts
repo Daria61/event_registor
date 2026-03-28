@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
 <p>
   <strong>Хаяг:</strong><br />
   Улаанбаатар хот, Чингэлтэй дүүрэг, 1-р хороо,<br />
-  Мөнгөн Завьяагийн автобусны буудлын ард талд<br />
-  Дэнвер оффис 2 давхарт, 15170
+  Galleria Ulaanbaatar - Perla <br />
+  Perla оффис 2 давхарт
 </p>
 
 <p>
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
 <p>
   <strong>Google map:</strong>
-  <a href="https://maps.app.goo.gl/9ubRA6VQMszqm3Ey8">
+  <a href="https://www.google.com/maps/place/Stoic+Education+Consulting+Firm/@47.9172052,106.9069526,743m/data=!3m2!1e3!4b1!4m6!3m5!1s0x5d96935a9986ab71:0xadd672bf4954577!8m2!3d47.9172016!4d106.9095275!16s%2Fg%2F11xp4903pk!5m1!1e1?entry=ttu&g_ep=EgoyMDI2MDEyNy4wIKXMDSoASAFQAw%3D%3D">
     https://maps.app.goo.gl/9ubRA6VQMszqm3Ey8
   </a>
 </p>

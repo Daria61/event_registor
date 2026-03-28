@@ -10,19 +10,19 @@ export const EventInfo = ({
   count: number;
   schedule: ScheduleMap;
 }) => {
-const text = Object.entries(schedule)
-  .map(([date, times]) => {
-    const match = date.match(/\d+/g) ?? [];
+  const text = Object.entries(schedule)
+    .map(([date, times]) => {
+      const match = date.match(/\d+/g) ?? [];
 
-    const month = match[0];
-    const day = match[1];
+      const month = match[0];
+      const day = match[1];
 
-    if (!month || !day) return "";
+      if (!month || !day) return "";
 
-    return `${month}/${day} - ${times.join("/")}`;
-  })
-  .filter(Boolean)
-  .join(", ");
+      return `${month}/${day} - ${times.join("/")}`;
+    })
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <>
@@ -53,7 +53,7 @@ const text = Object.entries(schedule)
               target="_blank"
               className="text-gray-600 text-[12px] flex gap-2 items-center"
             >
-              Мөнгөн завьяа <Link width={12} />
+              Galleria Ulaanbaatar - Perla <Link width={12} />
             </a>
           </div>
         </div>
