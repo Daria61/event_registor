@@ -192,7 +192,9 @@ export default function Home() {
                   key={date}
                   type="button"
                   variant="outline"
-                  className={selectedDate === date ? "bg-blue-500 text-white" : ""}
+                  className={
+                    selectedDate === date ? "bg-blue-500 text-white" : ""
+                  }
                   onClick={() => setValue("date", date)}
                 >
                   {date}
@@ -208,7 +210,9 @@ export default function Home() {
                   key={time}
                   type="button"
                   variant="outline"
-                  className={selectedTime === time ? "bg-blue-500 text-white" : ""}
+                  className={
+                    selectedTime === time ? "bg-blue-500 text-white" : ""
+                  }
                   onClick={() => setValue("time", time)}
                 >
                   {time}
@@ -224,7 +228,7 @@ export default function Home() {
                   <div className="w-10 h-10 border-4 border-t-blue-500 rounded-full animate-spin" />
                 </div>
               ) : (
-                Array.from({ length: 20 }).map((_, i) => {
+                Array.from({ length: 30 }).map((_, i) => {
                   const seat = i + 1;
                   const taken = takenSeats.includes(seat);
 
@@ -250,7 +254,10 @@ export default function Home() {
             <Input placeholder="Имэйл" {...register("email")} />
             <Input placeholder="Утас" {...register("phone")} />
 
-            <Button disabled={loading} className="w-full bg-blue-500 text-white">
+            <Button
+              disabled={loading}
+              className="w-full bg-blue-500 text-white"
+            >
               {loading ? "Илгээж байна..." : "Бүртгүүлэх"}
             </Button>
           </form>
