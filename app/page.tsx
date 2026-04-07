@@ -26,6 +26,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [selectOptions, setSelectOptions] = useState<ScheduleMap>({});
   const [totalSeats, setTotalSeats] = useState(0);
+  const [currentTotalSeats, setCurrentTotalSeats] = useState(30); // Default to 30
   const [fetchLoading, setFetchLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
 
@@ -52,7 +53,7 @@ export default function Home() {
   const selectedTime = watch("time");
   const selectedSeat = watch("seat");
 
-  // ---------------- Fetch seat status ----------------
+  // ---------------- Fetch seat status and total seats ----------------
   useEffect(() => {
     if (!selectedDate || !selectedTime) return;
 
@@ -64,6 +65,7 @@ export default function Home() {
       setValue("seat", 0);
 
       try {
+        // Fetch taken seats
         const res = await fetch(
           `/api/register?date=${selectedDate}&time=${selectedTime}`,
         );
@@ -81,6 +83,18 @@ export default function Home() {
           }
         } else {
           toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
+        }
+
+        // Fetch total seats for this date and time
+        const totalSeatsRes = await fetch(
+          `/api/total-seats?date=${selectedDate}&time=${selectedTime}`,
+        );
+        const totalSeatsData = await totalSeatsRes.json();
+
+        if (requestId !== requestIdRef.current) return;
+
+        if (totalSeatsData.status === "success") {
+          setCurrentTotalSeats(totalSeatsData.totalSeats);
         }
       } catch {
         toast.error("Суудлын мэдээллийг авахад алдаа гарлаа");
@@ -172,11 +186,16 @@ export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="relative w-120 min-h-screen bg-black overflow-hidden">
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-90 w-120">
-          <Image src="/Stoic.png" alt="poster" fill className="object-cover" />
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 h-100 w-120">
+          <Image
+            src="/eventpost.png"
+            alt="poster"
+            fill
+            className="object-cover"
+          />
         </div>
 
-        <div className="relative z-10 mt-70 bg-white rounded-t-4xl px-4 py-6">
+        <div className="relative z-10 mt-80 bg-white rounded-t-4xl px-4 py-6">
           <EventInfo
             totalSeats={totalSeats}
             count={count}
@@ -228,7 +247,7 @@ export default function Home() {
                   <div className="w-10 h-10 border-4 border-t-blue-500 rounded-full animate-spin" />
                 </div>
               ) : (
-                Array.from({ length: 30 }).map((_, i) => {
+                Array.from({ length: currentTotalSeats }).map((_, i) => {
                   const seat = i + 1;
                   const taken = takenSeats.includes(seat);
 
